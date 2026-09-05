@@ -1,0 +1,8 @@
+{
+  "name": "@palisade/cli", "version": "0.1.0", "description": "Private, evidence-based personal security audits in your terminal", "type": "module", "license": "MIT",
+  "bin": {"palisade": "./dist/index.js"},
+  "exports": {"./service": "./src/service.ts", "./collector": "./src/collector.ts", "./store": "./src/store.ts"},
+  "files": ["dist", "src", "README.md", "LICENSE"],
+  "scripts": {"build": "bun build src/index.ts --target=bun --outdir=dist", "test": "bun test test"},
+  "dependencies": {"@palisade/core": "workspace:*", "zod": "^4.3.6"}
+}

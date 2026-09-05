@@ -1,0 +1,22 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "palisade-local",
+  "main": "apps/worker/src/index.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "apps/web/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": true,
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "palisade-local",
+      "database_id": "local",
+      "migrations_dir": "apps/worker/migrations",
+    },
+  ],
+  "vars": { "APP_URL": "http://localhost:8787" },
+}

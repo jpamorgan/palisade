@@ -1,0 +1,40 @@
+{
+  "name": "palisade-security",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "packageManager": "bun@1.4.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "bun run --cwd apps/web dev",
+    "dev:api": "wrangler dev --config wrangler.jsonc --port 8787",
+    "build": "bun run --cwd apps/web build && bun run --cwd packages/cli build && bun run --cwd packages/mcp build",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test packages apps tests",
+    "deploy": "bun run build && alchemy deploy --stage production --profile default",
+    "cli": "bun packages/cli/src/index.ts",
+    "mcp": "bun packages/mcp/src/index.ts"
+  },
+  "dependencies": {
+    "@palisade/core": "workspace:*",
+    "zod": "^4.3.6"
+  },
+  "overrides": {
+    "sharp": "0.35.2",
+    "undici": "7.29.0",
+    "ws": "8.21.3"
+  },
+  "devDependencies": {
+    "alchemy": "0.93.2",
+    "@cloudflare/workers-types": "latest",
+    "@types/bun": "latest",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.9.3",
+    "wrangler": "latest",
+    "dotenv": "^17.3.1"
+  }
+}

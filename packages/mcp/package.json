@@ -1,0 +1,30 @@
+{
+  "name": "@palisade/mcp",
+  "version": "0.1.0",
+  "description": "Palisade local and hosted Model Context Protocol tools",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "palisade-mcp": "./dist/index.js"
+  },
+  "exports": {
+    ".": "./src/server.ts",
+    "./tools": "./src/tools.ts"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "bun build src/index.ts --target bun --outdir dist",
+    "test": "bun test test"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "@palisade/core": "workspace:*",
+    "@palisade/cli": "workspace:*",
+    "zod": "^4.3.6"
+  }
+}

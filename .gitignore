@@ -1,0 +1,16 @@
+node_modules/
+dist/
+**/dist/
+.env
+.env.*
+!.env.example
+.dev.vars
+.alchemy/
+.wrangler/
+.palisade/
+*.sqlite*
+*.db*
+playwright-report/
+test-results/
+.DS_Store
+.secrets/
