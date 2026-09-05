@@ -1,5 +1,5 @@
 import { useState, useRef, type FormEvent, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowRightIcon,
@@ -39,12 +39,13 @@ interface Token {
 }
 export function Exposure() {
   const { data, base, demo, mutate, pending, notify, userId } = useAudit();
+  const [params] = useSearchParams();
   const { data: integrations } = useQuery({
     queryKey: auditKeys.integrations(userId),
     queryFn: () => api<Integrations>("/integrations"),
     enabled: !demo,
   });
-  const [assetId, setAssetId] = useState("");
+  const [assetId, setAssetId] = useState(params.get("asset") ?? "");
   const [footprintAsset, setFootprintAsset] = useState("");
   const [consent, setConsent] = useState(false);
   const [searchConsent, setSearchConsent] = useState(false);

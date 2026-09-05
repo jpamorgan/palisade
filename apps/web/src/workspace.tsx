@@ -344,7 +344,6 @@ export function Checklist() {
       <header className="checklist-page-heading">
         <div>
           <h1>Your security checklist</h1>
-          <p>Verify your protections. Work through the gaps.</p>
         </div>
         <div className="checklist-utilities">
           <button
@@ -412,10 +411,6 @@ export function Checklist() {
         <section className="priority-checks">
           <div className="priority-heading">
             <h2>Recommended next</h2>
-            <p>
-              Known gaps first, then unverified protections. Priority is not a
-              prediction of an attack.
-            </p>
           </div>
           <ol className="priority-list" role="list">
             {priorityChecks.map((finding, index) => (
@@ -630,6 +625,7 @@ function CheckDialog({
   function openTool(panel: string) {
     setParams((params) => {
       params.set("panel", panel);
+      if (assetId) params.set("asset", assetId);
       return params;
     });
   }
@@ -792,6 +788,15 @@ function CheckDialog({
                 ))}
               </ol>
             </details>
+            {check.acceptedMethods.includes("provider") && (
+              <button
+                type="button"
+                className="button secondary provider-shortcut"
+                onClick={() => openTool("exposure")}
+              >
+                Check Have I Been Pwned <ArrowRightIcon />
+              </button>
+            )}
             <form onSubmit={save}>
               <Field name="evidence-status" label="What did you verify?">
                 <select
@@ -835,15 +840,6 @@ function CheckDialog({
                     evidence. Use the corresponding scan or local collector to
                     verify it.
                   </p>
-                  {check.acceptedMethods.includes("provider") && (
-                    <button
-                      type="button"
-                      className="button secondary"
-                      onClick={() => openTool("exposure")}
-                    >
-                      Open exposure checks <ArrowRightIcon />
-                    </button>
-                  )}
                 </div>
               )}
               <ErrorMessage error={error} />
