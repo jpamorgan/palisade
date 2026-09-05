@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { EvaluationSchema, WorkspaceSchema } from "@palisade/core";
 import { ApiBodies } from "./contracts";
+import { addScanOpenApi } from "./scan-openapi";
 
 type Operation = {
   path: string;
@@ -336,13 +337,14 @@ export function openApi(origin: string) {
       responses,
     };
   }
+  addScanOpenApi(paths, schemas, origin);
   return {
     openapi: "3.1.0",
     info: {
       title: "Palisade API",
-      version: "0.1.0",
+      version: "0.2.0",
       description:
-        "Personal security audit state and guided remediation. JSON requests are bounded to1.1MB; a workspace can contain up to1MB. GET requires read, mutations write, and provider scans scan. Cookies require same-origin requests; management requires a recent web session. Tokens cannot escalate access. Evidence is evaluated by the shared versioned core, never by an LLM.",
+        "Agent-led scans use /api/scans and scan-specific MCP; no login or provider keys are required. Legacy v1: personal security audit state and guided remediation. JSON requests are bounded to1.1MB; a workspace can contain up to1MB. GET requires read, mutations write, and provider scans scan. Cookies require same-origin requests; management requires a recent web session. Tokens cannot escalate access. Evidence is evaluated by the shared versioned core, never by an LLM.",
     },
     servers: [{ url: `${origin}/api/v1` }],
     paths,

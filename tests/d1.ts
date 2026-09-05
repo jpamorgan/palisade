@@ -1,15 +1,14 @@
 import { Database } from "bun:sqlite";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 
 /** Test adapter runs real SQLite SQL; deployed smoke tests additionally exercise Cloudflare D1. */
 export function testDatabase() {
   const db = new Database(":memory:");
-  db.exec(
-    readFileSync(
-      new URL("../apps/worker/migrations/0001_initial.sql", import.meta.url),
-      "utf8",
-    ),
-  );
+  const migrations = new URL("../apps/worker/migrations/", import.meta.url);
+  for (const file of readdirSync(migrations)
+    .filter((name) => name.endsWith(".sql"))
+    .sort())
+    db.exec(readFileSync(new URL(file, migrations), "utf8"));
   class Statement {
     constructor(
       private sql: string,

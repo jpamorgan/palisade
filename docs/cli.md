@@ -1,10 +1,28 @@
 # CLI and MCP guide
 
-Palisade's local CLI, stdio MCP server, and hosted API share the versioned core engine. Local operation needs no account or LLM. Hosted access adds a private account and scoped tokens. Local scan observations are never uploaded automatically.
+Palisade's local CLI, stdio MCP server, and hosted API share the versioned core engine. Local operation needs no account or LLM. New hosted scans use private, scan-scoped credentials without an account. Local scan observations are never uploaded automatically.
+
+## Connect to a live agent-led scan
+
+Copy the prompt from the landing page and give it to your agent. For immediate
+terminal access, supply `PALISADE_SCAN_URL` (the MCP endpoint, without a private
+viewing fragment) and `PALISADE_AGENT_TOKEN` through the subprocess environment:
+
+```sh
+bun run cli scan-agent tools
+bun run cli scan-agent call get_scan
+bun run cli scan-agent call report_progress --input -
+```
+
+The last command reads a JSON tool input from stdin. Discover its schema with
+`tools`; writes require the current revision and a fresh operation UUID. This
+mode uses the hosted MCP endpoint and publishes immediately to the private scan.
+The agent uses its existing search/browser tools without a Brave key. See the
+[scan protocol](AGENT-SCAN-CONTRACT.md) and [audit skill](../skills/palisade/SKILL.md).
 
 ## Get started
 
-Requires Bun 1.3 or newer. Run from the `platform` repository:
+Requires Bun 1.4.0 or newer. Run from the repository root:
 
 ```sh
 bun install
@@ -78,9 +96,12 @@ Exports and reports are owner-readable/writable files. Existing destinations req
 
 Import merges assets and records, preserves existing local history, and marks incoming evidence as imported. Imported snapshots are not accepted as trusted local score history. Imported actions become proposals. Reverify relevant controls to earn points. `assets remove ID --confirm` removes that asset and its current evidence from scope while keeping historical snapshots.
 
-## Hosted access and sync
+## Existing account API access and sync
 
-Create a hosted account and a scoped API token in Settings. Supply `PALISADE_TOKEN` through your secret environment mechanism, then:
+These commands use the retained v1 account API, separately from anonymous scans.
+Use an existing scoped token, or create one through `POST /api/v1/tokens` using
+an authenticated, fresh Better Auth session. See `/openapi.json` for its schema.
+Supply `PALISADE_TOKEN` through your secret environment mechanism, then:
 
 ```sh
 bun run cli status --host https://YOUR_HOST --json
@@ -89,7 +110,7 @@ bun run cli sync push --host https://YOUR_HOST
 bun run cli sync pull --host https://YOUR_HOST
 ```
 
-`--host` or `PALISADE_HOST` selects remote mode. HTTPS is required except loopback HTTP for local development. Redirects are refused so bearer tokens cannot follow a redirect. No token is persisted. `sync push` explicitly sends your local export to the host; `sync pull` explicitly merges the hosted export into local state. Neither replaces the destination workspace, and imported evidence still needs reverification. Hosted workspaces have a 1 MB compact-JSON limit; large local imports may be rejected with an actionable capacity error. Export a backup and remove selected older snapshots when you need to reclaim history space. Mac collection runs locally; use explicit sync after reviewing its results. HIBP/Brave keys for hosted mode are configured in the web UI.
+`--host` or `PALISADE_HOST` selects remote mode. HTTPS is required except loopback HTTP for local development. Redirects are refused so bearer tokens cannot follow a redirect. No token is persisted. `sync push` explicitly sends your local export to the host; `sync pull` explicitly merges the hosted export into local state. Neither replaces the destination workspace, and imported evidence still needs reverification. Hosted workspaces have a 1 MB compact-JSON limit; large local imports may be rejected with an actionable capacity error. Export a backup and remove selected older snapshots when you need to reclaim history space. Mac collection runs locally; use explicit sync after reviewing its results. Optional provider credentials for retained account mode use its authenticated integration API. The new web flow has no provider setup forms.
 
 ## Agent access
 

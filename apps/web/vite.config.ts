@@ -16,11 +16,6 @@ export default defineConfig({
         manualChunks(id) {
           if (
             id.includes("node_modules") &&
-            (id.includes("better-auth") || id.includes("simplewebauthn"))
-          )
-            return "auth";
-          if (
-            id.includes("node_modules") &&
             (id.includes("/react/") ||
               id.includes("react-dom") ||
               id.includes("react-router"))

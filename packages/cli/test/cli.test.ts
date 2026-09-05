@@ -144,7 +144,7 @@ test("generic evidence cannot forge provider or local trust; invalid check and s
 });
 test("version and help work without creating state", async () => {
   const { run } = await fixture();
-  expect((await run("--version")).out[0]).toBe("0.1.0");
+  expect((await run("--version")).out[0]).toBe("0.2.0");
   expect((await run("--help")).out[0]).toContain("Palisade");
 });
 test("asset edit retains identity and history while reopening changed identifier evidence", async () => {

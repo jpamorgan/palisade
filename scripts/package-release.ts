@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
 
@@ -78,6 +78,28 @@ for (const name of [
   sums.push(`${digest}  ${name}`);
 }
 await writeFile(join(directory, "SHA256SUMS"), `${sums.join("\n")}\n`);
+// Serve the same reviewed bundles and skill from the deployment's own origin.
+// They load only when an external agent requests them, never with the web UI.
+const webDirectory = "apps/web/public/agent";
+await mkdir(webDirectory, { recursive: true });
+const version = JSON.parse(await readFile("package.json", "utf8")).version;
+const files: Record<string, { url: string; sha256: string }> = {};
+for (const line of sums) {
+  const [sha256, name] = line.split("  ");
+  await copyFile(join(directory, name!), join(webDirectory, name!));
+  files[name!] = { url: `/agent/${name}`, sha256: sha256! };
+}
+await copyFile(join(directory, "SHA256SUMS"), join(webDirectory, "SHA256SUMS"));
+await copyFile("skills/palisade/SKILL.md", join(webDirectory, "skill.md"));
+await writeFile(join(webDirectory, "manifest.json"), JSON.stringify({
+  name: "palisade",
+  version,
+  runtime: "Bun >=1.4.0",
+  skill: "/agent/skill.md",
+  cli: files["palisade.js"],
+  mcp: files["palisade-mcp.js"],
+  files,
+}, null, 2) + "\n");
 console.log(
   `Packaged CLI + MCP with ${roots.size} dependency notices and SHA-256 checksums in ${directory}.`,
 );

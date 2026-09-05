@@ -12,18 +12,14 @@
     "@palisade/core": "workspace:*",
     "@tanstack/react-query": "^5.90.21",
     "@heroicons/react": "^2.2.0",
-    "better-auth": "1.7.2",
-    "@better-auth/passkey": "1.7.2",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "react-router-dom": "^7.13.1",
-    "qrcode": "^1.5.4"
+    "react-router-dom": "^7.13.1"
   },
   "devDependencies": {
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.4",
-    "vite": "^7.3.1",
-    "@types/qrcode": "^1.5.6"
+    "vite": "^7.3.1"
   }
 }

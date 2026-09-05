@@ -1,6 +1,6 @@
 {
   "name": "@palisade/mcp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Palisade local and hosted Model Context Protocol tools",
   "type": "module",
   "license": "MIT",

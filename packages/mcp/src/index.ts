@@ -5,12 +5,22 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { createPalisadeMcpServer } from "./server";
 const host = process.env.PALISADE_HOST;
 try {
-  const service = createService({
-    host,
-    token: process.env.PALISADE_TOKEN,
-    dataDir: process.env.PALISADE_DATA_DIR,
-  });
-  const server = createPalisadeMcpServer(service, { local: !host });
+  const args = process.argv.slice(2);
+  if (args.length > 1 || (args.length === 1 && args[0] !== "--scan"))
+    throw new Error(
+      "Use palisade-mcp for local audits or palisade-mcp --scan for a live scan.",
+    );
+  const server =
+    args[0] === "--scan"
+      ? await (await import("./scan-bridge")).createScanBridge()
+      : createPalisadeMcpServer(
+          createService({
+            host,
+            token: process.env.PALISADE_TOKEN,
+            dataDir: process.env.PALISADE_DATA_DIR,
+          }),
+          { local: !host },
+        );
   await server.connect(new StdioServerTransport());
   const shutdown = async () => {
     await server.close();

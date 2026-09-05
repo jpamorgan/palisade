@@ -14,3 +14,4 @@ playwright-report/
 test-results/
 .DS_Store
 .secrets/
+apps/web/public/agent/

@@ -1,6 +1,6 @@
 {
   "name": "palisade-security",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "license": "MIT",
@@ -12,7 +12,7 @@
   "scripts": {
     "dev": "bun run --cwd apps/web dev",
     "dev:api": "wrangler dev --config wrangler.jsonc --port 8787",
-    "build": "bun run --cwd apps/web build && bun run --cwd packages/cli build && bun run --cwd packages/mcp build",
+    "build": "bun run --cwd packages/cli build && bun run --cwd packages/mcp build && bun scripts/package-release.ts && bun run --cwd apps/web build",
     "typecheck": "tsc --noEmit",
     "test": "bun test packages apps tests",
     "deploy": "bun run build && alchemy deploy --stage production --profile default",

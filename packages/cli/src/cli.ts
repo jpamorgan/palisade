@@ -39,6 +39,7 @@ Usage: palisade <command> [options]
   import <file>                         Validate and merge; reverify imported proof
   report --out <file.html>               Write a private standalone HTML checklist
   sync push|pull --host <origin>         Merge local and hosted audit records
+  scan-agent tools|call|read             Connect this agent to a live scan (see --help)
 
 Options:
   --data-dir <directory>                 Local state (default: ~/.palisade)
@@ -161,6 +162,10 @@ export async function runCli(
     stderr: (text) => console.error(text),
   },
 ): Promise<number> {
+  if (argv[0] === "scan-agent") {
+    const { runScanAgentCli } = await import("./scan-agent");
+    return runScanAgentCli(argv.slice(1), io);
+  }
   let json = argv.includes("--json");
   try {
     const { values: flags, positionals } = parseArgs({
@@ -197,7 +202,7 @@ export async function runCli(
     });
     json = Boolean(flags.json);
     if (flags.version) {
-      io.stdout("0.1.0");
+      io.stdout("0.2.0");
       return 0;
     }
     if (flags.help || !positionals.length) {

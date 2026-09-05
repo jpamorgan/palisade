@@ -15,9 +15,18 @@ import { rateLimit } from "./store";
 import { openApi } from "./openapi";
 import { idempotent } from "./idempotency";
 import { AppError, type Env } from "./env";
+import {
+  authenticateScan,
+  createScan,
+  getScanService,
+  validateScanOrigin,
+} from "./scans";
+import { createScanMcpServer } from "./scan-mcp";
+import { ScanInputs } from "./scan-contracts";
 
 const app = new Hono<{ Bindings: Env }>();
 app.use("*", async (c, next) => {
+  await next();
   c.header("X-Content-Type-Options", "nosniff");
   c.header("Referrer-Policy", "no-referrer");
   c.header("X-Frame-Options", "DENY");
@@ -31,11 +40,14 @@ app.use("*", async (c, next) => {
       "Strict-Transport-Security",
       "max-age=31536000; includeSubDomains",
     );
-  if (c.req.path.startsWith("/api") || c.req.path === "/mcp") {
+  if (
+    c.req.path.startsWith("/api") ||
+    c.req.path.startsWith("/mcp") ||
+    c.req.path.startsWith("/scan/")
+  ) {
     c.header("Cache-Control", "no-store");
     c.header("X-Robots-Tag", "noindex, nofollow");
   }
-  await next();
 });
 app.onError((error, c) => {
   if (error instanceof AppError)
@@ -78,7 +90,7 @@ app.get("/api/health", (c) =>
   c.json({
     ok: true,
     service: "palisade",
-    version: "0.1.0",
+    version: "0.2.0",
     catalogVersion: CATALOG_VERSION,
   }),
 );
@@ -96,9 +108,14 @@ app.get("/.well-known/mcp/server-card.json", (c) =>
   c.json({
     name: "Palisade",
     description:
-      "Private personal security audits, evidence and remediation. Create a scoped bearer token in Settings; configure it in your MCP client's Authorization header.",
-    version: "0.1.0",
-    transport: { type: "streamable-http", url: `${c.env.APP_URL}/mcp` },
+      "Agent-led personal security scans. Create a scan at /api/scans, then connect its scoped agent capability to /mcp/scans/:id. The landing page copies a ready-to-use agent prompt.",
+    version: "0.2.0",
+    transport: {
+      type: "streamable-http",
+      urlTemplate: `${c.env.APP_URL}/mcp/scans/{id}`,
+    },
+    bootstrap: { method: "POST", url: `${c.env.APP_URL}/api/scans` },
+    skill: `${c.env.APP_URL}/agent/skill.md`,
     authentication: {
       type: "bearer",
       instructions:
@@ -161,6 +178,65 @@ async function readBody(request: Request) {
     throw new AppError("INVALID_JSON", "The request body is not valid JSON.");
   }
 }
+app.post("/api/scans", async (c) => {
+  ScanInputs.empty.parse(await readScanBody(c.req.raw));
+  return c.json(await createScan(c.env, c.req.raw), 201);
+});
+async function readScanBody(request: Request) {
+  if (!request.body) return {};
+  if (!request.headers.get("content-type")?.includes("application/json"))
+    throw new AppError(
+      "CONTENT_TYPE",
+      "Use application/json for this request.",
+      415,
+    );
+  const bytes = await readLimitedBody(request, 32_768);
+  if (!bytes.length) return {};
+  try {
+    return JSON.parse(new TextDecoder().decode(bytes)) as unknown;
+  } catch {
+    throw new AppError("INVALID_JSON", "The request body is not valid JSON.");
+  }
+}
+app.all("/api/scans/:id/*", async (c) => {
+  validateScanOrigin(c.req.raw, c.env);
+  const principal = await authenticateScan(c.req.raw, c.env, c.req.param("id"));
+  const method = c.req.method as "GET" | "POST" | "PATCH" | "DELETE";
+  if (!["GET", "POST", "PATCH", "DELETE"].includes(method))
+    return new Response(null, {
+      status: 405,
+      headers: { Allow: "GET, POST, PATCH, DELETE" },
+    });
+  const path = c.req.path.slice(`/api/scans/${principal.id}`.length) || "/";
+  return c.json(
+    (await getScanService(c.env, principal).request(
+      method,
+      path,
+      method === "GET" ? undefined : await readScanBody(c.req.raw),
+    )) as object,
+  );
+});
+app.all("/mcp/scans/:id", async (c) => {
+  validateScanOrigin(c.req.raw, c.env);
+  const principal = await authenticateScan(c.req.raw, c.env, c.req.param("id"));
+  if (c.req.method !== "POST")
+    return new Response(null, { status: 405, headers: { Allow: "POST" } });
+  const body = await readScanBody(c.req.raw);
+  const transport = new WebStandardStreamableHTTPServerTransport({
+    sessionIdGenerator: undefined,
+    enableJsonResponse: true,
+  });
+  const server = createScanMcpServer(
+    getScanService(c.env, principal),
+    principal.role,
+  );
+  await server.connect(transport);
+  const response = await transport.handleRequest(c.req.raw, {
+    parsedBody: body,
+  });
+  c.executionCtx.waitUntil(server.close());
+  return response;
+});
 app.all("/api/v1/*", async (c) => {
   validateOrigin(c.req.raw, c.env);
   const principal = await authenticate(c.req.raw, c.env);
@@ -199,7 +275,7 @@ app.all("/mcp", async (c) => {
   if (!c.req.header("authorization"))
     throw new AppError(
       "UNAUTHORIZED",
-      "Configure an API token from Palisade Settings as a Bearer Authorization header.",
+      "Configure a v1 API bearer token (see the repository MCP setup guide), or start an agent scan from the landing page.",
       401,
     );
   const principal = await authenticate(c.req.raw, c.env);
@@ -222,7 +298,7 @@ app.all("/mcp", async (c) => {
   return response;
 });
 app.all("*", async (c) => {
-  if (c.req.path.startsWith("/api/"))
+  if (c.req.path.startsWith("/api/") || c.req.path.startsWith("/mcp"))
     return c.json(
       { error: { code: "NOT_FOUND", message: "API endpoint not found." } },
       404,
@@ -257,6 +333,9 @@ export default {
         cursor = results[results.length - 1]!.owner_id;
       }
       await env.DB.batch([
+        env.DB.prepare("DELETE FROM agent_scan WHERE expires_at<=?").bind(
+          new Date().toISOString(),
+        ),
         env.DB.prepare("DELETE FROM request_limit WHERE window<?").bind(
           Math.floor(Date.now() / 1000) - 172800,
         ),

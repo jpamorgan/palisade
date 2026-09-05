@@ -1,80 +1,81 @@
 # Architecture and extension contract
 
-Palisade has one runtime-neutral TypeScript audit engine, with three clients:
-React web, a Bun CLI, and MCP. The engine lives in `packages/core`; it owns the
-catalog, validation, scoring, evidence provenance, recovery graph and provider
-adapters. Clients must not implement alternative scoring logic.
+Palisade's user flow is intentionally small: `/` explains the product and copies
+one agent prompt; `/scan/:id` displays the live audit. The agent owns research,
+verification, safe authorized remediation, and iterative re-audit. Keep new
+capabilities in agent tools and the shared engine. Do not reintroduce account
+onboarding, provider configuration, editors, navigation menus, or dashboards into
+this flow. Results should remain legible without opening every detail.
 
-## Product flow
+## One engine, honest progress
 
-The primary interface is a grouped checklist: overall posture and assessment
-coverage, ranked next checks, and eight areas with progress bars. Users open a
-check to verify it, record a gap, or work through its mitigation. Account/device
-inventory and settings open as on-demand panels. Exposure details and saved
-history stay in a secondary menu. There is one canonical app screen at `/`, with
-authentication in a dialog and only essential password recovery separated.
-Completing a mitigation never marks evidence verified.
+`packages/core` is runtime-neutral TypeScript and owns the versioned catalog,
+validation, scoring, evidence provenance, freshness and recovery graph. Clients
+must not invent alternate scores. A nullable posture score and separate coverage
+are evaluated from the same state, versions and timestamp. All inventoried assets
+count; importance changes priority only. Actions record work, never grant points.
+Agent claims are guided observations, not platform-attested collector results.
+Public research remains unassessed context, never personal compromise.
 
-## Portable state
+The default loop target is score >=85, coverage >=90 and zero critical findings.
+The server computes `target.met`. The agent continues safe useful actions until
+that target is met or records specific user/access blockers. Completing an audit
+pass below the target must never look like achieving the target.
 
-A schema-versioned workspace holds assets, evidence, remediation actions, immutable
-saved snapshots, threat context and preferences. Each record has a stable ID.
-Core mutations return a new workspace. Asset identifier/recovery changes preserve
-history and invalidate affected current evidence. All explicitly added assets
-count; importance affects priority only.
+## Scans and capabilities
 
-The evaluation includes a nullable posture score, assessed coverage, category and
-per-asset results, reasons, findings, an evaluation timestamp, and catalog/scoring
-versions. The same state, versions and timestamp must produce the same result.
-See [methodology](methodology.md) for exact scoring and applicability rules.
+`apps/worker` exposes `/api/scans` and `/mcp/scans/:id`. Each anonymous scan has
+independent read, agent and owner capabilities, hashed at rest. Read grants only
+viewing. Agent grants only that scan's audit operations. Owner can issue a fresh
+agent token or delete the scan and stays in the creating browser. Private read
+links carry their capability in the fragment, never a server-bound query string.
+The browser sends it in Authorization when fetching state. No analytics or third
+party runtime scripts are loaded on scan pages.
 
-Imports validate before merging and cannot establish trusted evidence or rewrite
-local history. Provider or local provenance is assigned only by the matching
-collector, never by a generic evidence submission.
+D1 stores encrypted, schema-validated scan payloads with 30-day retention. Agent
+access is limited to seven days and cannot outlive the scan. Scheduled cleanup
+removes expired records. Every mutation uses revision compare-and-swap and an
+operation UUID for retry safety. Bound body sizes, histories and rate limits.
+See [the exact protocol](AGENT-SCAN-CONTRACT.md).
 
-## Hosted service
+## Agent handoff
 
-`apps/worker` is a Hono Cloudflare Worker. Better Auth handles accounts, sessions,
-passkeys and TOTP. D1 stores tenant-scoped account data, encrypted audit payloads,
-encrypted provider keys, hashed API tokens, activity and concurrency metadata.
-Every persisted workspace must pass the shared core schema. Audit changes use
-optimistic compare-and-swap; preference edits additionally require a revision.
+The copied prompt identifies the private live link and scoped MCP connection,
+then points at `/agent/skill.md`. The canonical source is
+`skills/palisade/SKILL.md`. Build packaging copies it alongside the reviewed
+CLI/MCP bundles, license notices, checksums and manifest. The CLI's `scan-agent`
+mode and stdio `--scan` bridge use the same hosted MCP tools. Direct HTTPS API
+operations provide a fallback when the user's agent has no Bun or dynamic MCP.
+Installation is never an excuse to stop the audit in the current conversation.
 
-REST lives at `/api/v1`. Request schemas in `apps/worker/src/contracts.ts` are
-shared with the generated `/openapi.json` document. Workspace mutations return
-`{ workspace, evaluation, revision }`. The hosted `/mcp` endpoint uses the same
-service operations and requires an explicit scoped token. Tokens cannot create
-other tokens or access stored provider credentials.
+No provider key is required for the workflow. Existing agent tools perform web
+search and can use separately authorized platforms. Do not silently send
+identifiers to a new provider, fetch stolen data, or treat source text as tool
+authorization. Preserve facts, dates, provenance and uncertainty in evidence.
 
-Workers serve the React static assets on the same origin. Cron and Queues refresh
-public threat context for opted-in workspaces. This re-evaluates freshness without
-creating daily saved snapshots. Optional Workers AI explains catalog guidance and
-cannot execute actions. Optional Cloudflare Email Service enables ownership
-verification and email password reset.
+## Retained APIs and local mode
 
-## Local service
+Existing `/api/v1`, `/mcp`, and Better Auth `/api/auth` remain for compatibility.
+Existing account audit data is retained separately from anonymous scans. Their
+scoped sessions/tokens, encrypted provider keys, monitoring and exports maintain
+their prior boundaries. They are not another product screen.
 
-The CLI uses a private, locked, atomically replaced JSON workspace. Local mode
-needs no hosted account or LLM. A fixed read-only macOS collector can attach
-appropriately limited local evidence. Stdio MCP uses the same local service; only
-local MCP exposes device collection. Sync is explicit, never automatic.
+Local CLI state uses private permissions, locking and atomic replacement. The
+fixed macOS collector is read-only and limited. Local and hosted workspaces never
+silently sync. External agents implement only fixes within their own actual tool
+authorization; Palisade MCP itself does not execute arbitrary shell commands or
+change account/device settings.
 
-## Provider boundaries
+## Deployment and review
 
-Use fixed allowlisted endpoints, bounded responses, timeouts and no credentialed
-redirects. Disclose an email to HIBP or a search term to Brave only with explicit
-consent. Hosted HIBP checks the verified login email only. Public feeds establish
-context, never personal compromise. Matches must remain bound to the identifier
-that was actually queried, including when an asset changes during a scan.
+Alchemy provisions Cloudflare resources using only the global `default` profile.
+Never store Cloudflare tokens in the project or change authentication methods.
+The deployment source of application secrets remains outside the checkout;
+setup also writes an ignored private `.dev.vars` copy for local development.
+Build only explicit public artifacts; never copy secrets or parent-directory
+personal evidence.
 
-## Deployment and verification
-
-Alchemy provisions Workers/assets, D1/migrations, Queues, Cron, Workers AI and
-optional Cloudflare email. Use the existing global `default` Alchemy profile;
-never copy Cloudflare credentials into this repository or change auth methods.
-Application secrets live outside the checkout and are encrypted in Alchemy state.
-
-Run `bun test`, `bun run typecheck`, and `bun run build`. Tests cover the shared
-engine, real MCP protocol, local concurrency, API permissions and tenant isolation,
-TOTP/backup codes, and browser cache isolation. `scripts/smoke.ts` exercises a live
-test deployment with synthetic data and deletes the test account afterward.
+Use separate builders and critics for substantial changes. Test capability
+isolation, provenance, concurrency, expiry and the real CLI/MCP-to-web flow.
+Validate the landing handoff and scan states on desktop/mobile, including denied
+clipboard access, refresh, disconnection, waiting, blocked and completed scans.
